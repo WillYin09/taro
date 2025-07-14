@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .transform-style-preserve-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  .animate-reverse {
+    animation-direction: reverse;
+  }
+}
+
+/* Page transition animations - 优化版本 */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 15px, 0); /* 使用translate3d启用硬件加速 */
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale3d(0.9, 0.9, 1); /* 使用scale3d */
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards; /* 减少动画时长 */
+  opacity: 0;
+  will-change: transform, opacity; /* 提示浏览器优化 */
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out forwards; /* 减少动画时长 */
+  will-change: transform, opacity;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards; /* 减少动画时长 */
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+/* 优化悬停效果 */
+.hover\:shadow-glow:hover {
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); /* 减少发光强度 */
+  transition: box-shadow 0.2s ease; /* 减少过渡时长 */
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.5);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.8);
+}
+
+/* Glow animations */
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
+  }
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Particle effects */
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Loading spinner */
+@keyframes spin-glow {
+  0% {
+    transform: rotate(0deg);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
+  }
+  100% {
+    transform: rotate(360deg);
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  }
+}
+
+.animate-spin-glow {
+  animation: spin-glow 2s linear infinite;
+}
+
+/* 添加触摸优化 */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 性能优化 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 减少重绘 */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
+}
