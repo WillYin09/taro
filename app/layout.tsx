@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Cinzel } from "next/font/google"
+import { ThemeProvider } from "@/hooks/use-theme"
 import "./globals.css"
 
 const cinzel = Cinzel({
@@ -20,8 +21,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="zh-CN">
-      <body className={cinzel.className}>{children}</body>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className={cinzel.className}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   )
 }

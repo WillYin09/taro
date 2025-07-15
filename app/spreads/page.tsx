@@ -96,7 +96,10 @@ export default function SpreadsPage() {
       {/* Header */}
       <div className="px-6 pt-12 pb-6">
         <div className="flex items-center mb-6">
-          <button className="p-2 rounded-full bg-white/10 text-white mr-4">
+          <button
+            className="p-2 rounded-full bg-white/10 text-white mr-4"
+            onClick={() => (window.location.href = "/home")}
+          >
             <ArrowLeft size={20} />
           </button>
           <div>
@@ -167,21 +170,6 @@ export default function SpreadsPage() {
           ))}
         </div>
       </div>
-
-      {/* Floating Action */}
-      {selectedSpread && (
-        <div className="fixed bottom-6 left-6 right-6">
-          <MysticalButton
-            className="w-full shadow-2xl"
-            size="lg"
-            onClick={() => {
-              window.location.href = `/draw?spread=${selectedSpread}`
-            }}
-          >
-            开始 {spreads.find((s) => s.id === selectedSpread)?.name} 占卜
-          </MysticalButton>
-        </div>
-      )}
     </div>
   )
 }

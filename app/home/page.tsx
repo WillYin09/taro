@@ -56,7 +56,7 @@ export default function HomePage() {
       事业指导: 5,
     }
     const spreadId = spreadMap[actionTitle as keyof typeof spreadMap] || 1
-    navigateWithTransition(`/draw?spread=${spreadId}`)
+    navigateWithTransition(`/draw-ritual?spread=${spreadId}`)
   }
 
   return (

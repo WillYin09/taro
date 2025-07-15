@@ -1,324 +1,220 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { designTokens } from "@/lib/design-tokens"
-import { TarotCard } from "@/components/ui/tarot-card"
-import { MysticalButton } from "@/components/ui/mystical-button"
+import { useSearchParams } from "next/navigation"
 import { PageTransition } from "@/components/ui/page-transition"
+import { FanSpread } from "@/components/ui/fan-spread"
+import { ParallaxBackground } from "@/components/ui/parallax-background"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useNavigation } from "@/hooks/use-navigation"
-import { useGesture } from "@/hooks/use-gesture"
-import { useLongPress } from "@/hooks/use-long-press"
-import { ArrowLeft } from "lucide-react"
+import { useTheme } from "@/hooks/use-theme"
+import { useAudio } from "@/hooks/use-audio"
+import { themeTokens } from "@/lib/theme-system"
+import { ArrowLeft, Volume2, VolumeX } from "lucide-react"
+
+type RitualPhase = "entering" | "ready" | "drawing" | "complete"
 
 export default function DrawPage() {
-  const [phase, setPhase] = useState<"shuffle" | "draw" | "reveal">("shuffle")
-  const [shuffleCount, setShuffleCount] = useState(0)
+  const [phase, setPhase] = useState<RitualPhase>("entering")
   const [drawnCards, setDrawnCards] = useState<number[]>([])
-  const [isShuffling, setIsShuffling] = useState(false)
-  const [countdown, setCountdown] = useState(0)
   const [spreadType, setSpreadType] = useState(1)
   const { navigateWithTransition } = useNavigation()
+  const { effectiveTheme } = useTheme()
+  const { playSound, toggleMute, startAmbient, isMuted, isInitialized } = useAudio()
+  const searchParams = useSearchParams()
 
-  // 获取URL参数
+  const currentTheme = themeTokens[effectiveTheme]
+
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const spread = urlParams.get("spread")
+    const spread = searchParams?.get("spread")
     if (spread) {
       setSpreadType(Number.parseInt(spread))
     }
-  }, [])
-
-  const totalCards = 78
-  const cardsNeeded = getCardsNeeded(spreadType)
-
-  function getCardsNeeded(spread: number): number {
-    switch (spread) {
-      case 1:
-        return 1 // 今日指引
-      case 2:
-        return 3 // 经典三牌
-      case 3:
-        return 6 // 爱情六芒星
-      case 4:
-        return 10 // 凯尔特十字
-      case 5:
-        return 5 // 事业发展
-      case 6:
-        return 12 // 十二宫位
-      default:
-        return 3
-    }
-  }
+  }, [searchParams])
 
   useEffect(() => {
-    if (countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
-      return () => clearTimeout(timer)
-    } else if (countdown === 0 && phase === "shuffle" && shuffleCount >= 10) {
-      setPhase("draw")
-    }
-  }, [countdown, phase, shuffleCount])
-
-  const handleShuffle = () => {
-    if (isShuffling) return
-
-    setIsShuffling(true)
-    setShuffleCount((prev) => prev + 1)
-
-    // 添加震动反馈（如果支持）
-    if (navigator.vibrate) {
-      navigator.vibrate(50)
-    }
-
-    if (shuffleCount >= 9) {
-      setCountdown(3)
-    }
-
-    setTimeout(() => setIsShuffling(false), 500)
-  }
-
-  const longPressProps = useLongPress({
-    onLongPress: handleShuffle,
-    delay: 100, // 减少延迟，让长按更敏感
-  })
-
-  const gestureProps = useGesture({
-    onSwipeLeft: () => {
-      if (phase === "draw" && drawnCards.length > 0) {
-        // 可以添加撤销选择的功能
+    const timer = setTimeout(() => {
+      setPhase("ready")
+      if (isInitialized) {
+        startAmbient()
       }
-    },
-    onSwipeRight: () => {
-      if (phase === "reveal") {
-        navigateWithTransition("/reading")
-      }
-    },
-  })
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [isInitialized, startAmbient])
 
-  const handleCardDraw = (cardIndex: number) => {
-    if (drawnCards.includes(cardIndex) || drawnCards.length >= cardsNeeded) return
+  const getSpreadInfo = (spread: number) => {
+    const spreads = {
+      1: { name: "今日指引", cards: 1, description: "一张牌为你指明方向" },
+      2: { name: "经典三牌", cards: 3, description: "过去·现在·未来" },
+      3: { name: "爱情六芒星", cards: 6, description: "感情运势全解析" },
+      4: { name: "凯尔特十字", cards: 10, description: "人生全景占卜" },
+      5: { name: "事业发展", cards: 5, description: "职场运势指导" },
+      6: { name: "十二宫位", cards: 12, description: "全方位人生解读" },
+    }
+    return spreads[spread as keyof typeof spreads] || spreads[1]
+  }
 
-    setDrawnCards((prev) => [...prev, cardIndex])
+  const spreadInfo = getSpreadInfo(spreadType)
 
-    // 添加震动反馈
+  const handleDraw = (index: number) => {
+    if (drawnCards.includes(index)) return
+
+    setPhase("drawing")
+    setDrawnCards((prev) => [...prev, index])
+
+    // 震动反馈
     if (navigator.vibrate) {
-      navigator.vibrate(100)
+      navigator.vibrate([50, 100, 50])
     }
 
-    if (drawnCards.length + 1 === cardsNeeded) {
-      setTimeout(() => setPhase("reveal"), 1000)
+    // 检查是否完成所有抽牌
+    if (drawnCards.length + 1 >= spreadInfo.cards) {
+      setTimeout(() => {
+        setPhase("complete")
+        playSound("complete", 0.8)
+      }, 1000)
     }
   }
 
-  const renderShufflePhase = () => (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6" {...gestureProps}>
-      <div className="text-center mb-8 animate-fade-in-up">
-        <h2 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: designTokens.fonts.serif }}>
-          {countdown > 0 ? `准备中 ${countdown}` : "洗牌仪式"}
-        </h2>
-        <p className="text-white/70 mb-2">
-          {countdown > 0
-            ? "即将开始抽牌..."
-            : shuffleCount < 10
-              ? `请长按洗牌 (${shuffleCount}/10)`
-              : "洗牌完成，准备抽牌"}
-        </p>
-        {shuffleCount < 10 && <p className="text-gold-400 text-sm">专注于你想要询问的问题</p>}
-      </div>
-
-      <div className="relative mb-8 animate-scale-in" style={{ animationDelay: "0.2s" }}>
-        {/* Card Deck */}
-        <div className="relative">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className={`absolute transition-all duration-500 ${isShuffling ? "animate-pulse" : ""}`}
-              style={{
-                transform: `translate(${i * 2}px, ${i * -2}px) ${isShuffling ? "rotate(2deg)" : "rotate(0deg)"}`,
-                zIndex: 5 - i,
-              }}
-            >
-              <TarotCard size="lg" />
-            </div>
-          ))}
-        </div>
-
-        {/* Shuffle Effect */}
-        {isShuffling && (
-          <div className="absolute inset-0 pointer-events-none">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-gold-400 rounded-full animate-ping"
-                style={{
-                  left: `${20 + Math.random() * 60}%`,
-                  top: `${20 + Math.random() * 60}%`,
-                  animationDelay: `${Math.random() * 0.5}s`,
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {countdown === 0 && shuffleCount < 10 && (
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.4s" }} {...longPressProps}>
-          <MysticalButton
-            className="w-48 h-48 rounded-full text-lg select-none touch-manipulation"
-            disabled={isShuffling}
-          >
-            {isShuffling ? "洗牌中..." : "长按洗牌"}
-          </MysticalButton>
-        </div>
-      )}
-
-      {/* 进度指示器 */}
-      <div className="mt-8 animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
-        <div className="flex space-x-2">
-          {[...Array(10)].map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i < shuffleCount ? "bg-gold-400" : "bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-
-  const renderDrawPhase = () => (
-    <div className="min-h-screen px-6 py-12" {...gestureProps}>
-      <div className="text-center mb-8 animate-fade-in-up">
-        <h2 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: designTokens.fonts.serif }}>
-          选择你的牌
-        </h2>
-        <p className="text-white/70 mb-2">
-          请选择 {cardsNeeded} 张牌 ({drawnCards.length}/{cardsNeeded})
-        </p>
-        <p className="text-gold-400 text-sm">跟随直觉，选择吸引你的牌</p>
-      </div>
-
-      {/* Card Grid */}
-      <div className="grid grid-cols-6 gap-2 mb-8">
-        {[...Array(totalCards)].map((_, index) => (
-          <div key={index} className="animate-fade-in-up" style={{ animationDelay: `${Math.random() * 0.5}s` }}>
-            <TarotCard
-              size="sm"
-              className={`transition-all duration-300 ${
-                drawnCards.includes(index) ? "opacity-30 scale-95" : "hover:scale-105 cursor-pointer hover:shadow-glow"
-              }`}
-              onClick={() => handleCardDraw(index)}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* Selected Cards */}
-      {drawnCards.length > 0 && (
-        <div className="text-center animate-fade-in-up">
-          <h3 className="text-white text-lg mb-4">已选择的牌</h3>
-          <div className="flex justify-center space-x-4">
-            {drawnCards.map((cardIndex, i) => (
-              <div key={i} className="animate-scale-in" style={{ animationDelay: `${i * 0.1}s` }}>
-                <TarotCard size="md" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 进度条 */}
-      <div className="fixed bottom-24 left-6 right-6">
-        <div className="bg-white/10 rounded-full h-2 overflow-hidden">
-          <div
-            className="bg-gradient-to-r from-gold-400 to-purple-400 h-full transition-all duration-500"
-            style={{ width: `${(drawnCards.length / cardsNeeded) * 100}%` }}
-          />
-        </div>
-        <p className="text-center text-white/70 text-sm mt-2">
-          {drawnCards.length === cardsNeeded ? "选择完成！" : `还需选择 ${cardsNeeded - drawnCards.length} 张牌`}
-        </p>
-      </div>
-    </div>
-  )
-
-  const renderRevealPhase = () => (
-    <div className="min-h-screen px-6 py-12" {...gestureProps}>
-      <div className="text-center mb-8 animate-fade-in-up">
-        <h2 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: designTokens.fonts.serif }}>
-          你的牌阵
-        </h2>
-        <p className="text-white/70">{getSpreadName(spreadType)}</p>
-      </div>
-
-      <div className="flex justify-center space-x-6 mb-8">
-        {drawnCards.slice(0, Math.min(3, cardsNeeded)).map((_, i) => (
-          <div key={i} className="text-center animate-scale-in" style={{ animationDelay: `${i * 0.2}s` }}>
-            <TarotCard size="lg" isFlipped={true} name={`Card ${i + 1}`} className="mb-2" />
-            <p className="text-white/70 text-sm">{getPositionName(i, spreadType)}</p>
-          </div>
-        ))}
-      </div>
-
-      {cardsNeeded > 3 && (
-        <div className="text-center mb-8">
-          <p className="text-white/70 text-sm mb-4">还有 {cardsNeeded - 3} 张牌等待解读</p>
-          <div className="flex justify-center space-x-2">
-            {drawnCards.slice(3).map((_, i) => (
-              <TarotCard key={i} size="sm" isFlipped={true} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="text-center animate-fade-in-up" style={{ animationDelay: "0.6s" }}>
-        <MysticalButton size="lg" onClick={() => navigateWithTransition("/reading")} className="mb-4">
-          查看解读
-        </MysticalButton>
-        <p className="text-white/60 text-sm">向右滑动也可以查看解读</p>
-      </div>
-    </div>
-  )
-
-  function getSpreadName(spread: number): string {
-    const names = {
-      1: "今日指引",
-      2: "过去 · 现在 · 未来",
-      3: "爱情六芒星",
-      4: "凯尔特十字",
-      5: "事业发展",
-      6: "十二宫位",
-    }
-    return names[spread as keyof typeof names] || "塔罗牌阵"
+  const handleContinue = () => {
+    navigateWithTransition(`/reading?spread=${spreadType}`)
   }
 
-  function getPositionName(index: number, spread: number): string {
-    if (spread === 2) {
-      return ["过去", "现在", "未来"][index] || ""
+  const getPhaseText = () => {
+    switch (phase) {
+      case "entering":
+        return "正在连接宇宙的智慧..."
+      case "ready":
+        return "准备开始占卜仪式"
+      case "drawing":
+        return `已抽取 ${drawnCards.length}/${spreadInfo.cards} 张牌`
+      case "complete":
+        return "占卜完成，查看你的指引"
+      default:
+        return ""
     }
-    return `位置 ${index + 1}`
+  }
+
+  const getPhaseSubtext = () => {
+    switch (phase) {
+      case "ready":
+        return "点击牌堆开始抽牌"
+      case "drawing":
+        return drawnCards.length < spreadInfo.cards ? "继续选择剩余卡牌" : "所有卡牌已抽取完成"
+      case "complete":
+        return "点击查看详细解读"
+      default:
+        return ""
+    }
   }
 
   return (
     <PageTransition>
-      {/* Header */}
-      <div className="absolute top-12 left-6 z-10 animate-fade-in-up">
-        <button
-          onClick={() => navigateWithTransition("/spreads")}
-          className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-all duration-300"
-        >
-          <ArrowLeft size={20} />
-        </button>
-      </div>
+      <section className="relative w-full h-screen overflow-hidden flex flex-col items-center">
+        {/* 三层Parallax背景 */}
+        <ParallaxBackground />
 
-      {/* Content */}
-      <div className="relative z-10">
-        {phase === "shuffle" && renderShufflePhase()}
-        {phase === "draw" && renderDrawPhase()}
-        {phase === "reveal" && renderRevealPhase()}
-      </div>
+        {/* 顶部导航 */}
+        <div className="absolute top-12 left-6 right-6 z-20 flex items-center justify-between">
+          <button
+            onClick={() => navigateWithTransition("/spreads")}
+            className="p-3 rounded-full transition-all duration-300 hover:scale-110"
+            style={{
+              backgroundColor: `${currentTheme.background.card}`,
+              color: currentTheme.text.primary,
+              border: `1px solid ${currentTheme.border.secondary}`,
+              backdropFilter: "blur(10px)",
+            }}
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          <div className="text-center">
+            <h1
+              className="text-xl font-bold transition-colors duration-300 mb-1"
+              style={{
+                fontFamily: "Cinzel, serif",
+                color: currentTheme.text.primary,
+              }}
+            >
+              {spreadInfo.name}
+            </h1>
+            <p className="text-sm transition-colors duration-300" style={{ color: currentTheme.text.secondary }}>
+              {spreadInfo.description}
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <ThemeToggle />
+            <button
+              onClick={toggleMute}
+              className="p-3 rounded-full transition-all duration-300 hover:scale-110"
+              style={{
+                backgroundColor: isMuted ? `${currentTheme.text.accent}20` : `${currentTheme.background.card}`,
+                color: isMuted ? currentTheme.text.accent : currentTheme.text.primary,
+                border: `1px solid ${isMuted ? currentTheme.text.accent : currentTheme.border.secondary}`,
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {/* 标题区域 */}
+        <div className="pt-32 pb-8 text-center z-10">
+          <h2
+            className="text-2xl mb-3 transition-all duration-500"
+            style={{
+              fontFamily: "Cinzel, serif",
+              color: currentTheme.text.primary,
+            }}
+          >
+            {getPhaseText()}
+          </h2>
+          <p className="text-base transition-all duration-500" style={{ color: currentTheme.text.secondary }}>
+            {getPhaseSubtext()}
+          </p>
+
+          {/* 进度指示器 */}
+          {phase === "drawing" && (
+            <div className="flex items-center justify-center space-x-2 mt-4">
+              {[...Array(spreadInfo.cards)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: drawnCards.includes(i) ? currentTheme.text.accent : currentTheme.border.secondary,
+                    transform: drawnCards.includes(i) ? "scale(1.2)" : "scale(1)",
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 扇形牌阵 */}
+        <div className="flex-1 w-full relative z-10">
+          <FanSpread total={spreadInfo.cards} onDraw={handleDraw} drawnCards={drawnCards} />
+        </div>
+
+        {/* 完成按钮 */}
+        {phase === "complete" && (
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-20">
+            <button
+              onClick={handleContinue}
+              className="px-10 py-4 rounded-full font-semibold text-lg transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              style={{
+                background: `linear-gradient(45deg, ${currentTheme.text.accent} 0%, #E9C46A 50%, ${currentTheme.text.accent} 100%)`,
+                color: effectiveTheme === "dark" ? "#000" : "#fff",
+                boxShadow: `0 0 40px ${currentTheme.text.accent}40`,
+              }}
+            >
+              查看解读
+            </button>
+          </div>
+        )}
+      </section>
     </PageTransition>
   )
 }

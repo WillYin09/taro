@@ -50,6 +50,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        vintage: {
+          paper: "#F1E8D6",
+          ink: "#2F2C29",
+          red: "#B74646",
+          blue: "#4E7AA2",
+          gold: "#C9A44E",
+          back: "#322E29",
+        },
       },
       fontFamily: {
         serif: ["Cinzel", "Times New Roman", "serif"],
@@ -68,6 +76,8 @@ const config: Config = {
         glow: "0 0 20px rgba(212, 175, 55, 0.3)",
         "glow-lg": "0 0 40px rgba(212, 175, 55, 0.4)",
         "inner-glow": "inset 0 0 20px rgba(212, 175, 55, 0.2)",
+        "card-gold": "0 0 4px 0 #d9b365, 0 0 12px 2px rgba(217,179,101,0.5)",
+        "card-vintage": "0 0 6px 0 #C9A44E, 0 0 16px 4px rgba(201,164,78,.45)",
       },
       borderRadius: {
         lg: "var(--radius)",
